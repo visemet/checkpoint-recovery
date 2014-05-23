@@ -1,0 +1,14 @@
+{application, chkrec, [
+    {description, "State recovery for Erlang gen_server"}
+  , {vsn, "0.0.0"}
+  , {modules, []}
+  , {registered, []}
+
+  , {applications, [
+        kernel
+      , stdlib
+    ]}
+
+  , {mod, {chkrec_app, []}}
+  , {env, []}
+]}.
