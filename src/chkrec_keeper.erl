@@ -6,7 +6,7 @@
 
 -define(TIMEOUT, 5000).
 
--export([get/1, put/2]).
+-export([get/1, put/2, start_link/1]).
 
 -export([
     init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
@@ -63,13 +63,23 @@ put(Keeper, Value) when is_pid(Keeper) ->
 
 %%--------------------------------------------------------------------
 
--spec init(Source :: term()) ->
+-spec start_link(Source :: term()) ->
+    {ok, Pid :: pid()}
+  | {error, Reason :: term()}
+.
+
+%% @doc TODO document
+start_link(Source) -> gen_server:start_link(?MODULE, [Source], []).
+
+%%--------------------------------------------------------------------
+
+-spec init(Args :: list()) ->
     {ok, State :: keeper()}
   | {stop, Reason :: term()}
 .
 
 %% @doc Initializes the internal state of the backup keeper.
-init(Source) ->
+init([Source]) ->
     {ok, #keeper{source=Source}}
 .
 
