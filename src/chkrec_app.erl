@@ -1,3 +1,6 @@
+%% @author Max Hirschhorn <maxh@caltech.edu>
+
+%% @doc TODO document
 -module(chkrec_app).
 -behaviour(application).
 
@@ -7,9 +10,8 @@
 %% API
 %%====================================================================
 
-start(normal, _Args) ->
-    % TODO implement
-    {error, not_supported_yet}
-.
+%% @doc TODO document
+start(normal, _Args) -> chkrec_sup:start_link().
 
+%% @doc TODO document
 stop(_State) -> ok.

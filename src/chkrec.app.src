@@ -2,7 +2,12 @@
     {description, "State recovery for Erlang gen_server"}
   , {vsn, "0.0.0"}
   , {modules, []}
-  , {registered, []}
+
+  , {registered, [
+        chkrec_sup
+      , chkrec_keeper_mon
+      , chkrec_keeper_sup
+    ]}
 
   , {applications, [
         kernel
