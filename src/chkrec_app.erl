@@ -3,6 +3,7 @@
 %% @doc TODO document
 -module(chkrec_app).
 -behaviour(application).
+-compile(no_auto_import).
 
 -export([start/2, stop/1]).
 

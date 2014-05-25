@@ -3,6 +3,7 @@
 %% @doc TODO document
 -module(chkrec_keeper).
 -behaviour(gen_server).
+-compile(no_auto_import).
 
 -define(TIMEOUT, 5000).
 

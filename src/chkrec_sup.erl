@@ -3,6 +3,7 @@
 %% @doc TODO document
 -module(chkrec_sup).
 -behaviour(supervisor).
+-compile(no_auto_import).
 
 -define(KEEPER_MON, chkrec_keeper_mon).
 -define(KEEPER_SUP, chkrec_keeper_sup).

@@ -3,6 +3,7 @@
 %% @doc TODO document
 -module(chkrec_keeper_sup).
 -behaviour(supervisor).
+-compile(no_auto_import).
 
 -export([start_link/0]).
 
