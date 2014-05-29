@@ -81,7 +81,8 @@ start_link(Source) -> gen_server:start_link(?MODULE, [Source], []).
 
 %% @doc Initializes the internal state of the backup keeper.
 init([Source]) ->
-    {ok, #keeper{source=Source}}
+    chkrec_keeper_mon:update(Source, erlang:self())
+  , {ok, #keeper{source=Source}}
 .
 
 %%--------------------------------------------------------------------
