@@ -94,7 +94,7 @@ start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
 
--spec init(Args :: list()) ->
+-spec init(Args :: []) ->
     {ok, State :: keeper_mon()}
   | {stop, Reason :: term()}
 .
@@ -137,10 +137,34 @@ handle_call(_Request, _From, State) ->
 .
 
 %% @doc TODO document
-handle_cast({update, Source, Keeper}, State0) ->
-    Registry0 = State0#keeper_mon.registry
+handle_cast(
+    {update, Source, Keeper}
+  , State0 = #keeper_mon{registry = Registry0, refs = Refs0}
+) ->
+    % Check if already exists pid that is mapped by `Source'.
+    case dict:find(Source, Registry0) of
+        {ok, {value, OldPid}} ->
+            % Find the reference that maps to `Source'.
+            {ok, OldRef} = dict:fold(
+                find_key_with_value(Source)
+              , {error, not_found}
+              , Refs0)
+
+            % Turn off monitoring of `OldPid',
+            % and clear `DOWN' message if exists.
+          , erlang:demonitor(OldRef, [flush])
+            % Terminate `OldPid' "normally," so as to avoid restart.
+          , erlang:exit(OldPid, {shutdown, for_update})
+
+      ; _Else -> pass
+    end
+
   , Registry1 = dict:store(Source, Keeper, Registry0)
-  , State1 = State0#keeper_mon{registry=Registry1}
+
+  , MonitorRef = erlang:monitor(process, Keeper)
+  , Refs1 = dict:store(MonitorRef, Source, Refs0)
+
+  , State1 = State0#keeper_mon{registry=Registry1, refs=Refs1}
   , {noreply, State1}
 ;
 
@@ -206,5 +230,29 @@ terminate(_Reason, _State) -> ok.
 %%      state during a release upgrade or downgrade.
 %%      Nothing to change though.
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
+
+%%====================================================================
+%% private functions
+%%====================================================================
+
+-spec find_key_with_value(X :: term()) ->
+    fun ((Key :: term(), Value :: term(), AccIn) -> AccOut)
+  when
+    AccIn :: {ok, Key :: term()} | {error, Reason}
+  , AccOut :: {ok, Key :: term()} | {error, Reason}
+  , Reason :: not_found | multiple_keys
+.
+
+%% @doc TODO document
+find_key_with_value(X) ->
+    fun (Key, Value, Result) when Value =:= X ->
+        case Result of
+            {error, not_found} -> {ok, Key}
+          ; _Else -> {error, multiple_keys}
+        end
+
+      ; (_Key, _Value, Result) -> Result
+    end
+.
 
 %%--------------------------------------------------------------------
