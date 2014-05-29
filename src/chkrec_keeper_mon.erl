@@ -8,7 +8,7 @@
 -define(TIMEOUT, 5000).
 -define(KEEPER_SUP, chkrec_keeper_sup).
 
--export([new/1, update/2, lookup/1, watch/2, start_link/0]).
+-export([new/1, update/2, lookup/1, start_link/0]).
 
 -export([
     init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
@@ -73,13 +73,6 @@ update(Source, Keeper) when is_pid(Keeper) ->
 %% @doc TODO document
 lookup(Source) ->
     gen_server:call(?MODULE, {lookup, Source}, ?TIMEOUT)
-.
-
--spec watch(Source :: term(), Keeper :: pid()) -> ok.
-
-%% @doc TODO document
-watch(Source, Keeper) when is_pid(Keeper) ->
-    gen_server:cast(?MODULE, {watch, Source, Keeper})
 .
 
 %%--------------------------------------------------------------------
@@ -165,14 +158,6 @@ handle_cast(
   , Refs1 = dict:store(MonitorRef, Source, Refs0)
 
   , State1 = State0#keeper_mon{registry=Registry1, refs=Refs1}
-  , {noreply, State1}
-;
-
-handle_cast({watch, Source, Keeper}, State0) ->
-    Refs0 = State0#keeper_mon.refs
-  , MonitorRef = erlang:monitor(process, Keeper)
-  , Refs1 = dict:store(MonitorRef, Source, Refs0)
-  , State1 = State0#keeper_mon{refs=Refs1}
   , {noreply, State1}
 ;
 
