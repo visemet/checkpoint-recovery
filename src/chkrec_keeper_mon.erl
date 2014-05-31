@@ -20,7 +20,7 @@
 -type maybe_pid() :: chkrec_keeper:maybe(pid()) | down.
 %% Optionally present pid.
 
--type registry() :: dict:dict(term(), maybe_pid()).
+-type sources() :: dict:dict(term(), maybe_pid()).
 %% Mapping of identifiers for useful workers to pids of backup keepers.
 
 -type refs() :: dict:dict(reference(), term()).
@@ -28,12 +28,12 @@
 %% useful workers.
 
 -record(keeper_mon, {
-    registry = dict:new() :: registry()
+    sources = dict:new() :: sources()
   , refs = dict:new() :: refs()
 }).
 
 -type keeper_mon() :: #keeper_mon{
-    registry :: registry()
+    sources :: sources()
   , refs :: refs()
 }.
 %% Internal backup keeper monitor state.
@@ -107,8 +107,8 @@ init([]) -> {ok, #keeper_mon{}}.
 
 %% @doc TODO document
 handle_call({lookup, Source}, _From, State) ->
-    Registry = State#keeper_mon.registry
-  , MaybeKeeper = case dict:find(Source, Registry) of
+    Sources = State#keeper_mon.sources
+  , MaybeKeeper = case dict:find(Source, Sources) of
         {ok, Option} -> Option
       ; error -> none
     end
@@ -132,10 +132,10 @@ handle_call(_Request, _From, State) ->
 %% @doc TODO document
 handle_cast(
     {update, Source, Keeper}
-  , State0 = #keeper_mon{registry = Registry0, refs = Refs0}
+  , State0 = #keeper_mon{sources = Sources0, refs = Refs0}
 ) ->
     % Check if already exists pid that is mapped by `Source'.
-    case dict:find(Source, Registry0) of
+    case dict:find(Source, Sources0) of
         {ok, {value, OldPid}} ->
             % Find the reference that maps to `Source'.
             {ok, OldRef} = dict:fold(
@@ -152,12 +152,12 @@ handle_cast(
       ; _Else -> pass
     end
 
-  , Registry1 = dict:store(Source, Keeper, Registry0)
+  , Sources1 = dict:store(Source, Keeper, Sources0)
 
   , MonitorRef = erlang:monitor(process, Keeper)
   , Refs1 = dict:store(MonitorRef, Source, Refs0)
 
-  , State1 = State0#keeper_mon{registry=Registry1, refs=Refs1}
+  , State1 = State0#keeper_mon{sources=Sources1, refs=Refs1}
   , {noreply, State1}
 ;
 
@@ -177,17 +177,17 @@ handle_cast(_Request, State) ->
 %% @doc TODO document
 handle_info(
     {'DOWN', MonitorRef, process, _Keeper, _Reason}
-  , State0 = #keeper_mon{registry = Registry0, refs = Refs0}
+  , State0 = #keeper_mon{sources = Sources0, refs = Refs0}
 ) ->
     % Assumed that `MonitorRef' is present in the mapping of references.
     Source = dict:fetch(MonitorRef, Refs0)
   , Refs1 = dict:erase(MonitorRef, Refs0)
 
-    % Assumed that `Source' is present in the registry, and is
+    % Assumed that `Source' is present in the sources, and is
     % associated with `{value, _Keeper}'.
-  , Registry1 = dict:store(Source, down, Registry0)
+  , Sources1 = dict:store(Source, down, Sources0)
 
-  , State1 = State0#keeper_mon{registry=Registry1, refs=Refs1}
+  , State1 = State0#keeper_mon{sources=Sources1, refs=Refs1}
   , {noreply, State1}
 ;
 
