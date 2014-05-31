@@ -180,7 +180,7 @@ handle_cast(_Request, State) ->
 %% @doc Called by a `gen_server' to handle a message other than a
 %%      synchronous or asynchronous message.
 handle_info(
-    {'DOWN', MonitorRef, process, _Keeper, _Reason}
+    {'DOWN', MonitorRef, process, _Keeper, Reason}
   , State0 = #keeper_mon{sources = Sources0, refs = Refs0}
 ) ->
     % Assumed that `MonitorRef' is present in the mapping of references.
@@ -189,7 +189,13 @@ handle_info(
 
     % Assumed that `Source' is present in the sources, and is
     % associated with `{value, _Keeper}'.
-  , Sources1 = dict:store(Source, down, Sources0)
+  , Sources1 = case is_normal_reason(Reason) of
+        % Removes the entry in the case where the process will NOT be
+        % restarted by its supervisor.
+        true -> dict:erase(Source, Sources0)
+
+      ; false -> dict:store(Source, down, Sources0)
+    end
 
   , State1 = State0#keeper_mon{sources=Sources1, refs=Refs1}
   , {noreply, State1}
@@ -244,5 +250,14 @@ find_key_with_value(X) ->
       ; (_Key, _Value, Result) -> Result
     end
 .
+
+-spec is_normal_reason(Reason :: term()) -> boolean().
+
+%% @doc Returns `true' if the specified reason is indicative of a
+%%      "normal" exit, and `false' otherwise.
+is_normal_reason(normal) -> true;
+is_normal_reason(shutdown) -> true;
+is_normal_reason({shutdown, _}) -> true;
+is_normal_reason(_Reason) -> false.
 
 %%--------------------------------------------------------------------
