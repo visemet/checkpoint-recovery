@@ -50,13 +50,7 @@
 %% @doc Creates a new backup keeper under the supervisor of the
 %%      `chkrec_keeper_sup' process.
 new(Source) ->
-    Result = supervisor:start_child(?KEEPER_SUP, [Source])
-  , case Result of
-        {ok, Keeper} -> update(Source, Keeper)
-      ; _Else -> pass
-    end
-
-  , Result
+    supervisor:start_child(?KEEPER_SUP, [Source])
 .
 
 -spec update(Source :: term(), Keeper :: pid()) -> ok.
@@ -155,7 +149,7 @@ handle_cast(
       ; _Else -> pass
     end
 
-  , Sources1 = dict:store(Source, Keeper, Sources0)
+  , Sources1 = dict:store(Source, {value, Keeper}, Sources0)
 
   , MonitorRef = erlang:monitor(process, Keeper)
   , Refs1 = dict:store(MonitorRef, Source, Refs0)
