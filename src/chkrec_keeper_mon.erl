@@ -1,6 +1,6 @@
 %% @author Max Hirschhorn <maxh@caltech.edu>
 
-%% @doc TODO document
+%% @doc A module that monitors the status of `chkrec_keeper' processes.
 -module(chkrec_keeper_mon).
 -behaviour(gen_server).
 -compile(no_auto_import).
@@ -47,7 +47,8 @@
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Creates a new backup keeper under the supervisor of the
+%%      `chkrec_keeper_sup' process.
 new(Source) ->
     Result = supervisor:start_child(?KEEPER_SUP, [Source])
   , case Result of
@@ -60,7 +61,7 @@ new(Source) ->
 
 -spec update(Source :: term(), Keeper :: pid()) -> ok.
 
-%% @doc TODO document
+%% @doc Changes the pid associated with the specified source.
 update(Source, Keeper) when is_pid(Keeper) ->
     gen_server:cast(?MODULE, {update, Source, Keeper})
 .
@@ -70,7 +71,7 @@ update(Source, Keeper) when is_pid(Keeper) ->
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Returns the pid associated with the specified source.
 lookup(Source) ->
     gen_server:call(?MODULE, {lookup, Source}, ?TIMEOUT)
 .
@@ -82,7 +83,9 @@ lookup(Source) ->
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Convenience function to create a backup keeper monitor as part
+%%      of a supervisor hierarchy, registered locally as
+%%      `chkrec_keeper_mon'.
 start_link() -> gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 %%--------------------------------------------------------------------
@@ -105,7 +108,7 @@ init([]) -> {ok, #keeper_mon{}}.
     {reply, Reply :: term(), State1 :: keeper_mon()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle a synchronous message.
 handle_call({lookup, Source}, _From, State) ->
     Sources = State#keeper_mon.sources
   , MaybeKeeper = case dict:find(Source, Sources) of
@@ -129,7 +132,7 @@ handle_call(_Request, _From, State) ->
     {noreply, State1 :: keeper_mon()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle an asynchronous message.
 handle_cast(
     {update, Source, Keeper}
   , State0 = #keeper_mon{sources = Sources0, refs = Refs0}
@@ -174,7 +177,8 @@ handle_cast(_Request, State) ->
     {noreply, State1 :: keeper_mon()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle a message other than a
+%%      synchronous or asynchronous message.
 handle_info(
     {'DOWN', MonitorRef, process, _Keeper, _Reason}
   , State0 = #keeper_mon{sources = Sources0, refs = Refs0}
@@ -228,7 +232,8 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
   , Reason :: not_found | multiple_keys
 .
 
-%% @doc TODO document
+%% @doc Returns a function that yields the key associated with the
+%%      specified value. Intended to be used with `dict:fold/3'.
 find_key_with_value(X) ->
     fun (Key, Value, Result) when Value =:= X ->
         case Result of
