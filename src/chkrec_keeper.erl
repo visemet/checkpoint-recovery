@@ -1,6 +1,6 @@
 %% @author Max Hirschhorn <maxh@caltech.edu>
 
-%% @doc TODO document
+%% @doc A module that enables access to store and modify a value.
 -module(chkrec_keeper).
 -behaviour(gen_server).
 -compile(no_auto_import).
@@ -39,7 +39,8 @@
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Retrieves the value stored in the internal state of the backup
+%%      keeper, if any.
 get(Keeper) when is_pid(Keeper) ->
     try
         gen_server:call(Keeper, {get}, ?TIMEOUT)
@@ -53,7 +54,8 @@ get(Keeper) when is_pid(Keeper) ->
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Replaces the value stored in the internal state of the backup
+%%      keeper.
 put(Keeper, Value) when is_pid(Keeper) ->
     try
         gen_server:call(Keeper, {put, Value}, ?TIMEOUT)
@@ -69,7 +71,8 @@ put(Keeper, Value) when is_pid(Keeper) ->
   | {error, Reason :: term()}
 .
 
-%% @doc TODO document
+%% @doc Convenience function to create a backup keeper as part of a
+%%      supervisor hierarchy.
 start_link(Source) -> gen_server:start_link(?MODULE, [Source], []).
 
 %%--------------------------------------------------------------------
@@ -95,7 +98,7 @@ init([Source]) ->
     {reply, Reply :: term(), State1 :: keeper()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle a synchronous message.
 handle_call({put, Value}, _From, State0) ->
     State1 = State0#keeper{contents={value, Value}}
   , {reply, ok, State1}
@@ -118,7 +121,7 @@ handle_call(_Request, _From, State) ->
     {noreply, State1 :: keeper()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle an asynchronous message.
 handle_cast(_Request, State) ->
     {noreply, State}
 .
@@ -132,7 +135,8 @@ handle_cast(_Request, State) ->
     {noreply, State1 :: keeper()}
 .
 
-%% @doc TODO document
+%% @doc Called by a `gen_server' to handle a message other than a
+%%      synchronous or asynchronous message.
 handle_info(_Info, State) ->
     {noreply, State}
 .
