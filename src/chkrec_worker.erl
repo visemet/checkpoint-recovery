@@ -85,7 +85,9 @@
 
 -spec init(X :: {Mod :: atom(), Args :: list(), Options :: list()}) ->
     {ok, State :: worker()}
+  | {ok, State :: worker(), timeout() | hibernate}
   | {stop, Reason :: term()}
+  | ignore
 .
 
 %% @doc Initializes the internal state of the useful worker.
@@ -103,6 +105,11 @@ init({Mod, _Args, _Options}) ->
   , State0 :: worker()
 ) ->
     {reply, Reply :: term(), State1 :: worker()}
+  | {reply, Reply :: term(), State1 :: worker(), timeout() | hibernate}
+  | {noreply, State1 :: worker()}
+  | {noreply, State1 :: worker(), timeout() | hibernate}
+  | {stop, Reason :: term(), Reply :: term(), State1 :: worker()}
+  | {stop, Reason :: term(), State1 :: worker()}
 .
 
 %% @doc Called by a `gen_server' to handle a synchronous message.
@@ -117,6 +124,8 @@ handle_call(_Request, _From, State) ->
   , State0 :: worker()
 ) ->
     {noreply, State1 :: worker()}
+  | {noreply, State1 :: worker(), timeout() | hibernate}
+  | {stop, Reason :: term(), State1 :: worker()}
 .
 
 %% @doc Called by a `gen_server' to handle an asynchronous message.
@@ -131,6 +140,8 @@ handle_cast(_Request, State) ->
   , State0 :: worker()
 ) ->
     {noreply, State1 :: worker()}
+  | {noreply, State1 :: worker(), timeout() | hibernate}
+  | {stop, Reason :: term(), State1 :: worker()}
 .
 
 %% @doc Called by a `gen_server' to handle a message other than a
@@ -141,7 +152,12 @@ handle_info(_Info, State) ->
 
 %%--------------------------------------------------------------------
 
--spec terminate(Reason :: term(), State :: worker()) -> ok.
+-spec terminate(
+    Reason :: normal | shutdown | {shutdown, term()} | term()
+  , State :: worker()
+) ->
+    no_return()
+.
 
 %% @doc Called by a `gen_server' when it is about to terminate.
 %%      Nothing to clean up though.
@@ -153,6 +169,7 @@ terminate(_Reason, _State) -> ok.
   , Extra :: term()
 ) ->
     {ok, State1 :: worker()}
+  | {error, Reason :: term()}
 .
 
 %% @doc Called by a `gen_server' when it should update its internal
