@@ -83,7 +83,7 @@
 
 %%--------------------------------------------------------------------
 
--spec init(X :: {Mod :: atom(), Args :: list(), Options :: list()}) ->
+-spec init(X :: {Mod :: atom(), Args :: term(), Options :: list()}) ->
     {ok, State :: worker()}
   | {ok, State :: worker(), timeout() | hibernate}
   | {stop, Reason :: term()}
@@ -91,10 +91,18 @@
 .
 
 %% @doc Initializes the internal state of the useful worker.
-init({Mod, _Args, _Options}) ->
-    % TODO call `Mod:init/1', etc.
-    State = #worker{module=Mod}
-  , {ok, State}
+init({Mod, Args, _Options}) ->
+    case Mod:init(Args) of
+        {ok, Context} ->
+            State = #worker{module=Mod, context=Context}
+          , {ok, State}
+
+      ; {ok, Context, Timeout} ->
+            State = #worker{module=Mod, context=Context}
+          , {ok, State, Timeout}
+
+      ; Else -> Else
+    end
 .
 
 %%--------------------------------------------------------------------
@@ -113,8 +121,36 @@ init({Mod, _Args, _Options}) ->
 .
 
 %% @doc Called by a `gen_server' to handle a synchronous message.
-handle_call(_Request, _From, State) ->
-    {reply, ok, State}
+handle_call(
+    Request
+  , From
+  , State0 = #worker{module = Mod, context = Context0}
+) ->
+    case Mod:handle_call(Request, From, Context0) of
+        {reply, Reply, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {reply, Reply, State1}
+
+      ; {reply, Reply, Context1, Timeout} ->
+            State1 = State0#worker{context=Context1}
+          , {reply, Reply, State1, Timeout}
+
+      ; {noreply, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1}
+
+      ; {noreply, Context1, Timeout} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1, Timeout}
+
+      ; {stop, Reason, Reply, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {stop, Reason, Reply, State1}
+
+      ; {stop, Reason, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {stop, Reason, State1}
+    end
 .
 
 %%--------------------------------------------------------------------
@@ -129,8 +165,20 @@ handle_call(_Request, _From, State) ->
 .
 
 %% @doc Called by a `gen_server' to handle an asynchronous message.
-handle_cast(_Request, State) ->
-    {noreply, State}
+handle_cast(Request, State0 = #worker{module = Mod, context = Context0}) ->
+    case Mod:handle_cast(Request, Context0) of
+        {noreply, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1}
+
+      ; {noreply, Context1, Timeout} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1, Timeout}
+
+      ; {stop, Reason, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {stop, Reason, State1}
+    end
 .
 
 %%--------------------------------------------------------------------
@@ -146,8 +194,20 @@ handle_cast(_Request, State) ->
 
 %% @doc Called by a `gen_server' to handle a message other than a
 %%      synchronous or asynchronous message.
-handle_info(_Info, State) ->
-    {noreply, State}
+handle_info(Info, State0 = #worker{module = Mod, context = Context0}) ->
+    case Mod:handle_info(Info, Context0) of
+        {noreply, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1}
+
+      ; {noreply, Context1, Timeout} ->
+            State1 = State0#worker{context=Context1}
+          , {noreply, State1, Timeout}
+
+      ; {stop, Reason, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {stop, Reason, State1}
+    end
 .
 
 %%--------------------------------------------------------------------
@@ -160,8 +220,10 @@ handle_info(_Info, State) ->
 .
 
 %% @doc Called by a `gen_server' when it is about to terminate.
-%%      Nothing to clean up though.
-terminate(_Reason, _State) -> ok.
+%%      Defer to the callback module.
+terminate(Reason, #worker{module = Mod, context = Context}) ->
+    Mod:terminate(Reason, Context)
+.
 
 -spec code_change(
     OldVsn :: term()
@@ -174,7 +236,19 @@ terminate(_Reason, _State) -> ok.
 
 %% @doc Called by a `gen_server' when it should update its internal
 %%      state during a release upgrade or downgrade.
-%%      Nothing to change though.
-code_change(_OldVsn, State, _Extra) -> {ok, State}.
+%%      Defer to the callback module.
+code_change(
+    OldVsn
+  , State0 = #worker{module = Mod, context = Context0}
+  , Extra
+) ->
+    case Mod:code_change(OldVsn, Context0, Extra) of
+        {ok, Context1} ->
+            State1 = State0#worker{context=Context1}
+          , {ok, State1}
+
+      ; Else -> Else
+    end
+.
 
 %%--------------------------------------------------------------------
