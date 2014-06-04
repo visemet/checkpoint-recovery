@@ -1,7 +1,7 @@
 %% @author Max Hirschhorn <maxh@caltech.edu>
 
 %% @doc TODO
--module(chkrec_worker).
+-module(chkrec_server).
 -behaviour(gen_server).
 -compile(no_auto_import).
 
@@ -58,7 +58,7 @@
 
 -callback handle_info(
     Info :: timeout | term()
-  , State :: term()
+  , State0 :: term()
 ) ->
     {noreply, State1 :: term()}
   | {noreply, State1 :: term(), timeout() | hibernate}
@@ -74,7 +74,7 @@
 
 -callback code_change(
     OldVsn :: term() | {down, term()}
-  , State :: term()
+  , State0 :: term()
   , Extra :: term()
 ) ->
     {ok, State1 :: term()}
