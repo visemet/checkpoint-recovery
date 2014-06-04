@@ -5,19 +5,38 @@
 -behaviour(gen_server).
 -compile(no_auto_import).
 
+-define(TIMER_FREQUENCY, 60000).
+-define(RECEIVE_THRESHOLD, 100).
+
 -export([
     init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2
   , code_change/3
 ]).
 
+-type option() ::
+    {senders, list()}
+  | {timer_freq, pos_integer() | infinity}
+  | {receive_thresh, pos_integer() | infinity}
+.
+
 -record(worker, {
     module :: atom()
   , context :: term()
+  , senders = [] :: list()
+  , timer_freq = ?TIMER_FREQUENCY :: pos_integer() | infinity
+  , timer_ref :: reference()
+  , receive_thresh = ?RECEIVE_THRESHOLD :: pos_integer() | infinity
+  , receive_count = 0 :: non_neg_integer()
 }).
 
 -type worker() :: #worker{
     module :: atom()
   , context :: term()
+  , senders :: list()
+  , timer_freq :: pos_integer() | infinity
+  , timer_ref :: reference() | undefined
+  , receive_thresh :: pos_integer() | infinity
+  , receive_count :: non_neg_integer()
 }.
 %% Internal useful worker state.
 
@@ -83,7 +102,7 @@
 
 %%--------------------------------------------------------------------
 
--spec init(X :: {Mod :: atom(), Args :: term(), Options :: list()}) ->
+-spec init(X :: {Mod :: atom(), Args :: term(), Options :: [option()]}) ->
     {ok, State :: worker()}
   | {ok, State :: worker(), timeout() | hibernate}
   | {stop, Reason :: term()}
@@ -91,15 +110,21 @@
 .
 
 %% @doc Initializes the internal state of the useful worker.
-init({Mod, Args, _Options}) ->
+init({Mod, Args, Options}) ->
     case Mod:init(Args) of
         {ok, Context} ->
-            State = #worker{module=Mod, context=Context}
-          , {ok, State}
+            State0 = #worker{module=Mod, context=Context}
+          , case init(Options, State0) of
+                {ok, State1} -> {ok, State1}
+              ; {error, Reason} -> {stop, Reason}
+            end
 
       ; {ok, Context, Timeout} ->
-            State = #worker{module=Mod, context=Context}
-          , {ok, State, Timeout}
+            State0 = #worker{module=Mod, context=Context}
+          , case init(Options, State0) of
+                {ok, State1} -> {ok, State1, Timeout}
+              ; {error, Reason} -> {stop, Reason}
+            end
 
       ; Else -> Else
     end
@@ -249,6 +274,41 @@ code_change(
 
       ; Else -> Else
     end
+.
+
+%%====================================================================
+%% private functions
+%%====================================================================
+
+%% @doc Initializes the internal state of the useful worker.
+-spec init(Options :: [option()], State0 :: worker()) ->
+    {ok, State1 :: worker()}
+  | {error, Reason :: term()}
+.
+
+init([], State) ->
+    {ok, State}
+;
+
+init([{senders, Senders} | Options], State0) ->
+    State1 = State0#worker{senders=Senders}
+  , init(Options, State1)
+;
+
+init([{timer_freq, TimerFreq} | Options], State0) ->
+    % TODO validate type and value of `TimerFreq'
+    State1 = State0#worker{timer_freq=TimerFreq}
+  , init(Options, State1)
+;
+
+init([{receive_thresh, ReceiveThresh} | Options], State0) ->
+    % TODO validate type and value of `ReceiveThresh'
+    State1 = State0#worker{receive_thresh=ReceiveThresh}
+  , init(Options, State1)
+;
+
+init([Term | _Options], _State) ->
+    {error, {badarg, Term}}
 .
 
 %%--------------------------------------------------------------------
